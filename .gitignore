@@ -1,0 +1,26 @@
+# Ambiente virtual
+
+venv/
+.env/
+
+# Python
+
+__pycache__/
+*.pyc
+
+# Dados experimentais
+
+data/*.csv
+
+# Logs
+
+*.log
+
+# Sistema
+
+.DS_Store
+Thumbs.db
+
+# VS Code
+
+.vscode/
