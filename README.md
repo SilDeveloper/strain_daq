@@ -1,3 +1,5 @@
+![Python](https://img.shields.io/badge/Python-3.x-blue)
+
 # 📡 Sistema de Aquisição de Dados Extensométricos (DAQ) de Baixo Custo
 
 Este projeto tem como objetivo o desenvolvimento de um sistema de aquisição de dados extensométricos utilizando componentes de baixo custo, como Arduino e o módulo HX711, aplicado a medições de deformação mecânica.
