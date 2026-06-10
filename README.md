@@ -1,102 +1,103 @@
-![Python](https://img.shields.io/badge/Python-3.x-blue)
+# Sistema de Pesagem e Aquisição de Dados de Baixo Custo com Arduino
 
-# 📡 Sistema de Aquisição de Dados Extensométricos (DAQ) de Baixo Custo
+Sistema de pesagem desenvolvido utilizando célula de carga Single Point, módulo HX711, Arduino Uno e processamento em Python.
 
-Este projeto tem como objetivo o desenvolvimento de um sistema de aquisição de dados extensométricos utilizando componentes de baixo custo, como Arduino e o módulo HX711, aplicado a medições de deformação mecânica.
-
----
-
-## 📌 Descrição
-
-O sistema realiza a leitura de um extensômetro (strain gauge) configurado em 1/4 de ponte de Wheatstone, utilizando o conversor HX711 para amplificação e digitalização do sinal.
-
-Os dados são enviados via comunicação serial para um sistema em Python responsável pelo processamento, filtragem e armazenamento.
+O projeto foi desenvolvido como parte do Trabalho de Conclusão de Curso, com o objetivo de avaliar a viabilidade de soluções de baixo custo para aplicações de pesagem, instrumentação e aquisição de dados.
 
 ---
 
-## 🧩 Componentes Utilizados
+## Visão Geral
 
-* Arduino
-* Módulo HX711
-* Extensômetro (strain gauge ~120Ω)
-* Resistores (~115Ω)
-* Protoboard (fase atual)
-* Cabos jumper
+O sistema realiza:
 
----
+- Aquisição dos sinais da célula de carga;
+- Amplificação e conversão analógico-digital através do HX711;
+- Transmissão dos dados pelo Arduino;
+- Processamento e calibração em Python;
+- Conversão automática das leituras RAW em massa (g).
 
-## ⚙️ Arquitetura do Sistema
+Fluxo do sistema:
 
-### 🔹 Hardware
-
-* Ponte de Wheatstone (1/4 de ponte)
-* HX711 (ADC de alta precisão)
-* Arduino (leitura e transmissão)
-
-### 🔹 Software
-
-* Python (VS Code)
-* Leitura serial em tempo real
-* Filtragem de dados
-* Registro em CSV
-* Estrutura modular
+Célula de Carga → HX711 → Arduino → Computador → Python
 
 ---
 
-## 📁 Estrutura do Projeto
+## Hardware Utilizado
 
-```bash
+- Arduino Uno
+- Célula de carga Single Point
+- Módulo HX711
+- Cabos de conexão
+- Estrutura mecânica de suporte
+- Computador para aquisição e processamento
+
+---
+
+## Software Utilizado
+
+- Arduino IDE
+- Python 3.x
+- PySerial
+- NumPy
+- Matplotlib
+
+---
+
+## Estrutura do Repositório
+
+```
 strain_daq/
 │
-├── main.py
-├── serial_reader.py
-├── csv_logger.py
-├── filters.py
-├── calibration.py
-├── plotter.py
-└── data/  # arquivos CSV (ignorados no Git)
+├── arduino/
+│   └── codigo_arduino.ino
+│
+├── python/
+│   ├── calibracao.py
+│   ├── aquisicao.py
+│   └── balanca.py
+│
+├── imagens/
+│
+├── dados/
+│
+└── README.md
 ```
 
 ---
 
-## 📊 Funcionalidades
+## Calibração
 
-* Leitura contínua via serial
-* Filtragem de ruído (média móvel)
-* Remoção de valores aberrantes
-* Registro de dados com timestamp
-* Preparação para calibração e análise
+A calibração foi realizada utilizando massas de referência entre 0 g e 38 g.
 
----
+O ajuste linear apresentou:
 
-## ⚠️ Estado Atual
+- R² = 0,978
 
-O sistema encontra-se funcional, porém apresenta:
-
-* Ruído nas medições
-* Sensibilidade a interferências externas
-* Instabilidade devido à montagem em protoboard
-
-Melhorias estão sendo implementadas no processamento e na montagem física.
+permitindo a conversão dos valores RAW fornecidos pelo HX711 em valores de massa.
 
 ---
 
-## 🎯 Próximos Passos
+## Resultados
 
-* Refinamento da filtragem de sinais
-* Calibração experimental com cargas conhecidas
-* Conversão de RAW → força → deformação
-* Geração de gráficos automáticos
-* Integração com interface web (Flask)
+Durante os testes experimentais:
 
----
-
-## 📌 Observações
-
-Este projeto faz parte de uma pesquisa de mestrado em **Modelagem Computacional**, com foco em instrumentação de baixo custo.
+- O sistema apresentou comportamento aproximadamente linear;
+- Foi possível estimar massas utilizando regressão linear;
+- Um ensaio de validação com massa de 10 g resultou em leitura aproximada de 10,7 g;
+- O sistema demonstrou viabilidade para aplicações didáticas e experimentais.
 
 ---
 
-## 📄 Licença
+## Trabalho Acadêmico
 
-Uso acadêmico.
+Este projeto foi desenvolvido como Trabalho de Conclusão de Curso.
+
+Título:
+
+**Desenvolvimento e Validação de um Sistema de Pesagem e Aquisição de Dados de Baixo Custo Utilizando Arduino**
+
+---
+
+## Licença
+
+Este projeto é disponibilizado para fins acadêmicos e educacionais.
