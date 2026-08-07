@@ -82,6 +82,23 @@ Realiza 3 repetições independentes para cada massa de referência, com espera 
 **`main.py`**
 Leitura contínua em tempo real. Monitora um histórico de 12 leituras consecutivas e detecta automaticamente quando o peso estabilizou (variação menor que 0,5 g), exibindo o valor confirmado no terminal.
 
+# Calculadora de Incerteza
+
+Notebook desenvolvido em Python para implementação da metodologia de avaliação de incerteza de medição conforme o Guide to the Expression of Uncertainty in Measurement (GUM 2008).
+
+## Funcionalidades
+
+- cálculo da média e desvio padrão;
+- incerteza Tipo A;
+- incerteza Tipo B;
+- incerteza padrão combinada;
+- graus de liberdade efetivos (Welch-Satterthwaite);
+- fator de abrangência;
+- incerteza expandida;
+- erro normalizado (En).
+
+Os dados experimentais são fornecidos por arquivos CSV.
+
 ---
 ## Trabalho Acadêmico
 
