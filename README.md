@@ -47,7 +47,7 @@ Célula de Carga → HX711 → Arduino → Computador → Python
 ## Estrutura do Repositório
 
 ```
-strain_daq/
+Sistema_DAQ_Silvia/
 │
 ├── arduino/
 │   └── codigo_arduino.ino
@@ -58,7 +58,8 @@ strain_daq/
 │   ├── validacao.py
 │   └── main.py
 │
-├── data/
+├── notebooks/
+│   └── calculadora_incerteza.ipynb
 │
 └── README.md
 ```
@@ -84,20 +85,27 @@ Leitura contínua em tempo real. Monitora um histórico de 12 leituras consecuti
 
 # Calculadora de Incerteza
 
-Notebook desenvolvido em Python para implementação da metodologia de avaliação de incerteza de medição conforme o Guide to the Expression of Uncertainty in Measurement (GUM 2008).
+Este repositório contém um notebook desenvolvido em Python para implementação da metodologia de avaliação da incerteza de medição conforme o *Guide to the Expression of Uncertainty in Measurement* (GUM 2008).
 
 ## Funcionalidades
 
-- cálculo da média e desvio padrão;
-- incerteza Tipo A;
-- incerteza Tipo B;
-- incerteza padrão combinada;
-- graus de liberdade efetivos (Welch-Satterthwaite);
-- fator de abrangência;
-- incerteza expandida;
-- erro normalizado (En).
+- Leitura de dados experimentais a partir de arquivos CSV;
+- Cálculo da média aritmética e do desvio padrão;
+- Determinação da incerteza do Tipo A;
+- Determinação das componentes de incerteza do Tipo B;
+- Cálculo da incerteza padrão combinada;
+- Cálculo dos graus de liberdade efetivos (Welch-Satterthwaite);
+- Determinação do fator de abrangência;
+- Cálculo da incerteza expandida;
+- Cálculo do erro normalizado ($E_n$).
 
-Os dados experimentais são fornecidos por arquivos CSV.
+## Arquivos de entrada
+
+Os dados experimentais devem ser fornecidos por meio de arquivos CSV contendo as medições realizadas durante os ensaios experimentais.
+
+## Objetivo
+
+O notebook foi desenvolvido como ferramenta de apoio à avaliação metrológica realizada na dissertação de mestrado, automatizando os cálculos recomendados pelo GUM (2008) e contribuindo para a reprodutibilidade da análise de incerteza.
 
 ---
 ## Trabalho Acadêmico
