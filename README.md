@@ -99,6 +99,10 @@ Este repositório contém um notebook desenvolvido em Python para implementaçã
 - Cálculo da incerteza expandida;
 - Cálculo do erro normalizado ($E_n$).
 
+- ### Execução no Google Colab
+
+O notebook `calculadora_incerteza.ipynb` também pode ser executado diretamente no **Google Colab**, permitindo testar os códigos e realizar as análises sem a necessidade de configurar o ambiente Python localmente. Basta abrir o notebook no Colab e fornecer os arquivos CSV com os dados experimentais a serem analisados.
+
 ## Arquivos de entrada
 
 Os dados experimentais devem ser fornecidos por meio de arquivos CSV contendo as medições realizadas durante os ensaios experimentais.
