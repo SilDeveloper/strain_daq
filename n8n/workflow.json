@@ -1,0 +1,413 @@
+{
+  "name": "MCCT DAQ V1",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Análise de dados Jupyter Notebook via N8N",
+        "formDescription": "Este formulário é destinado para a submissão de arquivos .ipynb com o propósito de analisar dados já manipulados, submetendo-os a um chatbot para geração de relatório sobre os mesmos.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Notebook",
+              "fieldType": "file",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        -400,
+        -16
+      ],
+      "id": "b3bfdb77-0f83-4453-a287-506693eefd79",
+      "name": "On form submission"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Esse código não lê nem altera o conteúdo do notebook: apenas mostra os nomes dos campos recebidos e identifica em quais propriedades binárias os arquivos chegaram.\n\nreturn items.map((item) => ({\n  json: {\n    camposRecebidos: Object.keys(item.json),\n    arquivosRecebidos: Object.keys(item.binary ?? {}),\n  },\n  binary: item.binary,\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        -16
+      ],
+      "id": "fd4aa67b-74ec-481c-b2f6-48343ea7ef1f",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "Notebook_1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        -16
+      ],
+      "id": "8a8f0d80-4eae-49fb-b066-ac74fe211ac4",
+      "name": "Dados Arduino"
+    },
+    {
+      "parameters": {
+        "binaryPropertyName": "Notebook_2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        144
+      ],
+      "id": "efa0824b-1279-4f02-8f1f-33cfed231185",
+      "name": "Dados Quantum"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "Notebook_0",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        48,
+        -176
+      ],
+      "id": "ee45c2f8-2a0c-4e30-b78b-0d6adb5837fd",
+      "name": "Calculadora de Incerteza"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Separar cada célula do notebook em um item.\n//Identificar se é uma célula de código ou de texto (markdown).\n//Extrair o conteúdo de cada célula.\n//Preservar os resultados armazenados, inclusive saídas que possam conter tabelas, textos e gráficos.\n\nconst notebook = $input.first().json.data;\n\nif (!notebook || !Array.isArray(notebook.cells)) {\n  throw new Error('Não encontrei as células do notebook.');\n}\n\nreturn notebook.cells.map((cell, index) => {\n  const conteudo = Array.isArray(cell.source)\n    ? cell.source.join('')\n    : (cell.source ?? '');\n\n  return {\n    json: {\n      indice: index,\n      tipo: cell.cell_type,\n      conteudo,\n      resultados: cell.outputs ?? []\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -176
+      ],
+      "id": "686c7a6a-33e0-493d-b29e-803c0b4cf53e",
+      "name": "Conteúdo células"
+    },
+    {
+      "parameters": {
+        "jsCode": "// reunir as 14 células em um único texto, preservando a separação entre texto explicativo, código e resultados.\n\nconst celulas = $input.all();\n\nconst texto = celulas.map(({ json }) => {\n  const tipo = json.tipo === 'markdown'\n    ? 'TEXTO'\n    : 'CÓDIGO';\n\n  const resultados = (json.resultados ?? [])\n    .map((r) => {\n      const dados = r.data ?? {};\n      const textoSaida = [\n        ...(r.text ?? []),\n        ...(dados['text/plain'] ?? []),\n        ...(dados['text/html'] ?? [])\n      ];\n\n      return textoSaida.join('');\n    })\n    .filter(Boolean)\n    .join('\\n');\n\n  return [\n    `--- CÉLULA ${json.indice} (${tipo}) ---`,\n    json.conteudo ?? '',\n    resultados ? `RESULTADOS:\\n${resultados}` : ''\n  ].filter(Boolean).join('\\n');\n}).join('\\n\\n');\n\nreturn [{\n  json: {\n    totalCelulas: celulas.length,\n    conteudoNotebook: texto\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        -176
+      ],
+      "id": "5b19dee2-634c-4ce4-bfd5-25bc8d6c4d2f",
+      "name": "Reunir células em texto"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deve receber os dados do nó Dados Arduino, que já gera 50 itens.\n\nconst registros = $input.all().map(item => item.json);\n\nconst grupos = {};\n\nfor (const registro of registros) {\n  const massa = Number(registro.peso_padrao);\n  const leitura = Number(registro.leitura);\n\n  if (!Number.isFinite(massa) || !Number.isFinite(leitura)) {\n    continue;\n  }\n\n  if (!grupos[massa]) {\n    grupos[massa] = [];\n  }\n\n  grupos[massa].push(leitura);\n}\n\nconst estatisticas = Object.entries(grupos).map(([massa, valores]) => {\n  const media = valores.reduce((soma, valor) => soma + valor, 0)\n    / valores.length;\n\n  const variancia = valores.reduce(\n    (soma, valor) => soma + (valor - media) ** 2,\n    0\n  ) / valores.length;\n\n  \n  return {\n    peso_padrao: Number(massa),\n    quantidade_arduino: valores.length,\n    media_arduino: media,\n    desvio_padrao_arduino: Math.sqrt(variancia),\n    minimo_arduino: Math.min(...valores),\n    maximo_arduino: Math.max(...valores)\n  };\n});\n\nreturn estatisticas.map(item => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        -16
+      ],
+      "id": "09d795c7-832f-4332-95c3-ce8507b6a2a0",
+      "name": "Calculo Estatísticas Arduino"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Deve receber os dados do nó Dados Quantum, que já gera 50 itens.\n\nconst registros = $input.all().map(item => item.json);\n\nconst grupos = {};\n\nfor (const registro of registros) {\n  const massa = Number(registro.peso_padrao);\n  const leitura = Number(registro.leitura);\n\n  if (!Number.isFinite(massa) || !Number.isFinite(leitura)) {\n    continue;\n  }\n\n  if (!grupos[massa]) {\n    grupos[massa] = [];\n  }\n\n  grupos[massa].push(leitura);\n}\n\nconst estatisticas = Object.entries(grupos).map(([massa, valores]) => {\n  const media = valores.reduce((soma, valor) => soma + valor, 0)\n    / valores.length;\n\n  const variancia = valores.reduce(\n    (soma, valor) => soma + (valor - media) ** 2,\n    0\n  ) / valores.length;\n\n  \n  return {\n    peso_padrao: Number(massa),\n    quantidade_quantum: valores.length,\n    media_quantum: media,\n    desvio_padrao_quantum: Math.sqrt(variancia),\n    minimo_quantum: Math.min(...valores),\n    maximo_quantum: Math.max(...valores)\n  };\n});\n\nreturn estatisticas.map(item => ({ json: item }));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        144
+      ],
+      "id": "bec29996-f013-4ce8-9d69-46eb0ec4ff52",
+      "name": "Calculo Estatísticas Quantum"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "fieldsToMatchString": "peso_padrao",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        512,
+        48
+      ],
+      "id": "a6f5d019-cacb-44d2-8391-468443e64927",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// calcular a diferença entre as médias para cada massa.\n\n\nconst registros = $input.all();\n\nreturn registros.map(({ json }) => {\n  const diferenca = json.media_arduino - json.media_quantum;\n\n  return {\n    json: {\n      ...json,\n      diferenca_g: diferenca,\n      diferenca_absoluta_g: Math.abs(diferenca),\n      diferenca_relativa_percentual:\n        json.media_quantum !== 0\n          ? (diferenca / json.media_quantum) * 100\n          : null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        48
+      ],
+      "id": "da11ac9e-b265-4112-b300-32afcb8ba725",
+      "name": "Diferença entre instrumentos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Organizar os resultados em um único bloco de texto, que depois enviaremos para a IA interpretar.\n\nconst registros = $input.all().map(item => item.json);\n\nconst dados = registros.map(r => ({\n  massa_g: r.peso_padrao,\n  media_arduino: r.media_arduino,\n  media_quantum: r.media_quantum,\n  desvio_padrao_arduino: r.desvio_padrao_arduino,\n  desvio_padrao_quantum: r.desvio_padrao_quantum,\n  diferenca_g: r.diferenca_g,\n  diferenca_absoluta_g: r.diferenca_absoluta_g,\n  diferenca_relativa_percentual: r.diferenca_relativa_percentual\n}));\n\nreturn [{\n  json: {\n    quantidade_pontos: dados.length,\n    dados_comparativos: dados,\n    texto_para_analise: JSON.stringify(dados, null, 2)\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        48
+      ],
+      "id": "eae37d42-e8b5-4ed6-9ccf-b44ee25fe22d",
+      "name": "Preparar dados para relatório"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=\n={{ JSON.stringify($json.dados_comparativos, null, 2) }}\n",
+        "options": {
+          "systemMessage": "Você é um assistente especializado em análise metrológica, estatística descritiva e comparação de sistemas de medição.\n\nSua tarefa é interpretar os dados produzidos pelo workflow, elaborar uma análise técnica clara e apresentar conclusões estritamente fundamentadas nos dados recebidos.\n\n## 1. Fidelidade aos dados\n\n- Utilize exclusivamente os dados fornecidos na entrada do agente.\n- Não invente valores, medições, especificações técnicas, resultados de testes estatísticos ou componentes de incerteza.\n- Preserve os valores, sinais, unidades e quantidades apresentados.\n- Se algum dado necessário estiver ausente, informe explicitamente essa limitação.\n- Não confunda valores ausentes com valores iguais a zero.\n\n## 2. Interpretação estatística\n\nDiferencie corretamente os seguintes conceitos:\n\n- **Média:** valor médio das observações.\n- **Desvio-padrão:** medida da dispersão das observações em torno da média.\n- **Repetibilidade:** consistência das medições realizadas sob condições de repetibilidade. Menor desvio-padrão indica menor dispersão observada, mas não comprova, isoladamente, superioridade estatística.\n- **Diferença entre médias:** diferença numérica entre os valores médios dos dois sistemas.\n- **Erro de medição:** diferença entre um valor medido e um valor de referência apropriado, quando esse valor de referência estiver disponível.\n- **Incerteza de medição:** parâmetro associado à dispersão dos valores que podem ser razoavelmente atribuídos ao mensurando. Não deve ser confundida com desvio-padrão ou diferença entre médias.\n\nNão afirme que um instrumento é mais exato, mais preciso ou estatisticamente superior sem evidências suficientes para sustentar a afirmação.\n\n## 3. Comparação entre os instrumentos\n\nQuando os dados compararem Arduino + HX711 com Quantum MX1615:\n\n- Identifique claramente qual instrumento apresenta a maior média.\n- Calcule ou interprete a diferença conforme a definição:\n  Δ = média_Arduino − média_Quantum.\n- Se Δ for positivo, informe que a média do Arduino é maior.\n- Se Δ for negativo, informe que a média do Arduino é menor.\n- Se Δ for zero, informe que as médias são iguais dentro da precisão numérica apresentada.\n- Diferencie a diferença absoluta da diferença relativa percentual.\n- Informe qual denominador foi utilizado no cálculo percentual.\n- Não interprete a concordância entre os instrumentos como prova de exatidão de qualquer um deles.\n\n## 4. Incerteza e conformidade metrológica\n\n- Não declare conformidade metrológica sem critérios de aceitação definidos e evidências adequadas.\n- Não afirme equivalência entre instrumentos sem uma avaliação apropriada.\n- Não calcule ou declare incerteza expandida sem os componentes de incerteza e os pressupostos necessários.\n- Não calcule o erro normalizado (E_n) sem os valores de referência pertinentes e as incertezas expandidas dos dois sistemas.\n- Não invente fator de abrangência, nível de confiança, tolerância ou especificação de fabricante.\n- Quando aplicável, indique quais dados adicionais seriam necessários para aprofundar a análise.\n\n## 5. Verificação obrigatória antes de responder\n\nAntes de elaborar a resposta final, confira:\n\n1. Se as médias e os desvios-padrão correspondem aos dados recebidos.\n2. Se os sinais das diferenças estão corretos.\n3. Se os percentuais foram calculados com o denominador adequado.\n4. Se as unidades e as casas decimais são consistentes.\n5. Se a descrição textual corresponde aos números das tabelas.\n6. Se a conclusão não contradiz a análise por massa.\n7. Se nenhuma afirmação ultrapassa o que os dados permitem concluir.\n\nSe encontrar uma inconsistência nos dados recebidos, informe-a em vez de corrigi-la silenciosamente.\n\n## 6. Formato da resposta\n\nOrganize a análise, quando os dados permitirem, nas seguintes seções:\n\n1. Síntese geral.\n2. Tabela comparativa dos resultados.\n3. Análise das diferenças por ponto de medição.\n4. Discussão da dispersão e da repetibilidade observada.\n5. Limitações da análise.\n6. Conclusão.\n\nAdapte o nível de detalhe à quantidade e à qualidade dos dados recebidos. Evite repetições e linguagem excessivamente categórica.\n\nResponda em português brasileiro, com linguagem técnica, objetiva e acessível.\n\nSeu objetivo é interpretar corretamente os resultados disponíveis, não produzir conclusões mais fortes do que as evidências permitem.\n\n## 7. Controle de consistência e prevenção de inferências indevidas\n\n- Nunca invente a quantidade de repetições. Utilize o campo de quantidade recebido para cada ponto de medição. Se o campo estiver ausente, informe que essa informação não foi fornecida.\n- Não presuma que todos os pontos possuem a mesma quantidade de observações.\n- Não invente nomes de fabricantes, modelos, características técnicas, certificados, normas ou condições experimentais que não estejam presentes nos dados.\n- Diferencie a massa nominal informada, a massa de referência efetivamente atribuída e a incerteza associada a essa referência. Não trate esses conceitos como equivalentes.\n- Quando os campos de entrada já contiverem diferenças calculadas, utilize-os como base e confira sua coerência com as médias. Não substitua valores por estimativas próprias sem indicar a divergência.\n- Antes de concluir, compare os valores numéricos mencionados no texto com os valores apresentados nas tabelas. Não apresente intervalos, percentuais ou quantidades que contradigam os dados.\n- Se houver divergência entre campos ou resultados, identifique o problema e evite apresentar uma conclusão definitiva até que ele seja esclarecido.\n- Não afirme que a quantidade de repetições é insuficiente ou suficiente com base em um número presumido. Informe a quantidade efetivamente recebida e limite as conclusões ao que os dados permitem sustentar.\n- Não recomende números específicos de repetições, certificados ou procedimentos como se fossem exigências universais. Apresente essas sugestões apenas quando forem justificadas pelo objetivo da análise."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1120,
+        48
+      ],
+      "id": "b472306f-fc07-4e6e-b96a-57f88e9f3524",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "cohere/north-mini-code:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        304
+      ],
+      "id": "13c9f0bc-265b-45f6-892e-db8af3d1f8ad",
+      "name": "OpenRouter Chat Model"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "output",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1488,
+        48
+      ],
+      "id": "c64eca55-b52a-451d-bb3a-daf8cf7674d1",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "/data/bot_mcctdaq_1.txt",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        1712,
+        48
+      ],
+      "id": "b86036f5-3a28-4309-a6b1-6654d6abaf66",
+      "name": "Read/Write Files from Disk"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Dados Arduino",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Dados Quantum",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Calculadora de Incerteza",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculadora de Incerteza": {
+      "main": [
+        [
+          {
+            "node": "Conteúdo células",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dados Arduino": {
+      "main": [
+        [
+          {
+            "node": "Calculo Estatísticas Arduino",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dados Quantum": {
+      "main": [
+        [
+          {
+            "node": "Calculo Estatísticas Quantum",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Conteúdo células": {
+      "main": [
+        [
+          {
+            "node": "Reunir células em texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculo Estatísticas Quantum": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Calculo Estatísticas Arduino": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Diferença entre instrumentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Diferença entre instrumentos": {
+      "main": [
+        [
+          {
+            "node": "Preparar dados para relatório",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar dados para relatório": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

@@ -24,3 +24,15 @@ Thumbs.db
 # VS Code
 
 .vscode/
+
+# Segredos e credenciais
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials.json
+
+# Dados locais do n8n
+.n8n/
