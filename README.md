@@ -36,11 +36,11 @@ Célula de Carga → HX711 → Arduino → Computador → Python
 
 ## Software Utilizado
 
-- Arduino IDE
-- Python 3.x
-- PySerial
-- NumPy
-- Matplotlib
+- Arduino IDE (Interface de Desenvolvimento Integrado do Arduino);
+- Python 3.x (Utilizamos a versão 3 do Python);
+- PySerial (Para a comunicação através do monitor serial do Arduino IDE);
+- NumPy (Para cálculos estatísticos como média, desvio padrão, erro absoluto e regressão linear);
+- Matplotlib (Para a plotagem de gráficos).
 
 ---
 
